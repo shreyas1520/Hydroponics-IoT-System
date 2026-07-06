@@ -10,18 +10,18 @@ The Hydroponics IoT System is a smart agriculture solution designed to monitor a
 The project demonstrates the complete hardware implementation, sensor integration, automation logic, and real-time monitoring of a hydroponics environment.
 
 > Features
-Real-time sensor monitoring
-Automatic environmental control
-Water quality monitoring
-Pump automation
-Humidity and temperature regulation
-IoT-based data collection
-Expandable smart farming architecture
+1. Real-time sensor monitoring
+2. Automatic environmental control
+3. Water quality monitoring
+4. Pump automation
+5. Humidity and temperature regulation
+6. IoT-based data collection
+7. Expandable smart farming architecture
 
 Technologies Used
-ESP32 / Arduino
-Embedded C++
-IoT Sensors
-Relay Modules
-LCD/OLED Display 
-Wi-Fi Communication
+1. ESP32 
+2. Embedded C++
+3. IoT Sensors
+4. Relay Modules
+5. OLED Display 
+6. Wi-Fi Communication
