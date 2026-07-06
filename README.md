@@ -32,12 +32,37 @@ Sensor data is transmitted to the Blynk IoT platform through Wi-Fi for remote mo
 - GitHub
 
 - ## Working
-1. Sensors collect data.
-2. ESP32 processes the readings.
-3. Data is uploaded to Blynk using Wi-Fi.
-4. OLED displays live values.
+1. Sensors continuously monitor environmental parameters.
+2. ESP32 reads and processes sensor data.
+3. Sensor readings are displayed on the OLED display.
+4. Data is transmitted to the Blynk IoT platform using Wi-Fi.
 5. Water level is continuously monitored.
-6. Low water level activates refill pump.
-7. User receives Blynk notification.
-8. User receives Email Alert.
-9. Air pump continuously supplies oxygen.
+6. If the water level becomes low:
+   - Refill pump starts automatically.
+   - Push notification is sent through Blynk.
+   - Email alert is generated.
+7. Air pump continuously supplies oxygen to plant roots.
+
+## 📊 Results
+
+The developed system successfully achieved:
+
+- Continuous monitoring of pH, TDS, temperature, humidity, and water level.
+- Automatic refill of nutrient reservoir.
+- Real-time monitoring using Blynk IoT.
+- Instant push notifications.
+- Automated email alerts.
+- Stable Wi-Fi communication between ESP32 and Blynk.
+- Reliable automation with minimal human intervention.
+
+---
+
+## 🔮 Future Scope
+
+- AI-based nutrient prediction
+- Automatic pH correction
+- Disease detection using computer vision
+- Cloud database integration
+- Solar-powered hydroponic system
+- Mobile analytics dashboard
+
