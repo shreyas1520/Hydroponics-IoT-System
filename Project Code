@@ -1,1 +1,300 @@
+PROJECT CODE:
+
+/******************
+   HYDROFARM FINAL CODE (UPDATED)
+
+   ✔️ Water pump smart control
+   ✔️ Air pump timer (1 hr ON, 8 hr OFF cycle)
+   ✔️ OLED rotating display (2 sec)
+   ✔️ Blynk integration
+   ✔️ ALERT ONLY for LOW WATER
+******************/
+
+#define BLYNK_TEMPLATE_ID "TMPL3YFvpiWOP"
+#define BLYNK_TEMPLATE_NAME "HydroFarm"
+#define BLYNK_AUTH_TOKEN "zxJ7ispVvC2aqA5z49D72cI5zWo3AZvb"
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+#include <Wire.h>
+#include <U8g2lib.h>
+
+// WiFi Credentials
+char ssid[] = "HydroPharm";
+char pass[] = "Aissms_Coe_2025";
+
+// ================= PIN DEFINITIONS =================
+#define PH_PIN 34
+#define TDS_PIN 35
+#define WATER_PIN 32
+#define DHT_PIN 4
+
+#define RELAY1 13
+#define RELAY2 33
+#define DC_PUMP 25
+
+#define BUZZER 26
+#define RED_LED 27
+#define GREEN_LED 14
+
+#define DHTTYPE DHT22
+
+DHT dht(DHT_PIN, DHTTYPE);
+
+// OLED Display
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0);
+
+// ================= SYSTEM VARIABLES =================
+
+// Sensor values
+float ph = 0, tds = 0, temp = 0, hum = 0;
+int waterLevel = 0;
+
+// Timing
+unsigned long lastSensor = 0;
+unsigned long lastDisplay = 0;
+unsigned long airPumpTimer = 0;
+
+// Display page
+int displayPage = 0;
+
+// Air pump state
+bool airPumpState = true;
+
+// Manual DC pump control from app
+bool manualPump = false;
+
+// Alert flag (to avoid spam)
+bool waterAlertSent = false;
+
+// Thresholds
+#define WATER_LOW 20
+#define WATER_FULL 80
+
+// ================= BLYNK CONTROL =================
+
+// Manual DC Pump Control
+BLYNK_WRITE(V9) {
+  manualPump = param.asInt();
+}
+
+// ================= SENSOR READING =================
+
+void readSensors() {
+
+  // pH Calculation
+  float voltage = analogRead(PH_PIN) * (3.3 / 4095.0);
+  ph = 7 + ((2.5 - voltage) / 0.18);
+
+  // TDS Calculation
+  float tdsVoltage = analogRead(TDS_PIN) * (3.3 / 4095.0);
+  tds = tdsVoltage * 500;
+
+  // Water Level (0–100%)
+  waterLevel = map(analogRead(WATER_PIN), 0, 4095, 0, 100);
+
+  // DHT22
+  temp = dht.readTemperature();
+  hum = dht.readHumidity();
+}
+
+// ================= WATER PUMP LOGIC =================
+
+void controlWaterPump() {
+
+  // Highest priority: FULL tank → pump OFF
+  if (waterLevel >= WATER_FULL) {
+    digitalWrite(DC_PUMP, LOW);
+    manualPump = 0; // reset button
+  }
+
+  // LOW water OR manual ON → pump ON
+  else if (waterLevel < WATER_LOW || manualPump) {
+    digitalWrite(DC_PUMP, HIGH);
+  }
+
+  else {
+    digitalWrite(DC_PUMP, LOW);
+  }
+}
+
+// ================= AIR PUMP TIMER =================
+
+void controlAirPump() {
+
+  unsigned long now = millis();
+
+  // ON for 1 hour
+  if (airPumpState && now - airPumpTimer > 3600000) {
+    airPumpState = false;
+    airPumpTimer = now;
+  }
+
+  // OFF for 8 hours
+  else if (!airPumpState && now - airPumpTimer > 28800000) {
+    airPumpState = true;
+    airPumpTimer = now;
+  }
+
+  // Relay control (LOW = ON)
+  digitalWrite(RELAY1, airPumpState ? LOW : HIGH);
+  digitalWrite(RELAY2, airPumpState ? LOW : HIGH);
+}
+
+// ================= ALERT SYSTEM (ONLY WATER) =================
+
+void checkWaterAlert() {
+
+  if (waterLevel < WATER_LOW) {
+
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BUZZER, HIGH);
+
+    Blynk.virtualWrite(V6, 255);
+    Blynk.virtualWrite(V7, "LOW WATER LEVEL!");
+
+    // Send notification only once
+    if (!waterAlertSent) {
+      Blynk.logEvent("alert", "Water level is LOW!");
+      waterAlertSent = true;
+    }
+
+  } else {
+
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(BUZZER, LOW);
+
+    Blynk.virtualWrite(V6, 0);
+    Blynk.virtualWrite(V7, "System Normal");
+
+    waterAlertSent = false;
+  }
+}
+
+// ================= OLED DISPLAY =================
+
+void updateDisplay() {
+
+  u8g2.clearBuffer();
+
+  // PRIORITY MESSAGE: Water filling
+  if (waterLevel < WATER_LOW || manualPump) {
+    u8g2.setCursor(0, 20);
+    u8g2.print("Filling Water...");
+  }
+
+  // PRIORITY: Air Pump ON
+  else if (airPumpState) {
+    u8g2.setCursor(0, 20);
+    u8g2.print("Air Pump ON");
+  }
+
+  // NORMAL ROTATION
+  else {
+    switch (displayPage) {
+
+      case 0:
+        u8g2.setCursor(0, 20);
+        u8g2.print("pH: ");
+        u8g2.print(ph);
+        break;
+
+      case 1:
+        u8g2.setCursor(0, 20);
+        u8g2.print("TDS: ");
+        u8g2.print(tds);
+        u8g2.print(" ppm");
+        break;
+
+      case 2:
+        u8g2.setCursor(0, 20);
+        u8g2.print("Water: ");
+        u8g2.print(waterLevel);
+        u8g2.print("%");
+        break;
+
+      case 3:
+        u8g2.setCursor(0, 15);
+        u8g2.print("Temp: ");
+        u8g2.print(temp);
+        u8g2.print(" C");
+
+        u8g2.setCursor(0, 35);
+        u8g2.print("Hum: ");
+        u8g2.print(hum);
+        u8g2.print("%");
+        break;
+    }
+  }
+
+  u8g2.sendBuffer();
+}
+
+// ================= BLYNK UPDATE =================
+
+void sendToBlynk() {
+  Blynk.virtualWrite(V0, ph);
+  Blynk.virtualWrite(V1, tds);
+  Blynk.virtualWrite(V2, waterLevel);
+  Blynk.virtualWrite(V3, temp);
+  Blynk.virtualWrite(V4, hum);
+}
+
+// ================= SETUP =================
+
+void setup() {
+
+  Serial.begin(115200);
+
+  pinMode(RELAY1, OUTPUT);
+  pinMode(RELAY2, OUTPUT);
+  pinMode(DC_PUMP, OUTPUT);
+
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+
+  // Safe startup (relays OFF)
+  digitalWrite(RELAY1, HIGH);
+  digitalWrite(RELAY2, HIGH);
+  digitalWrite(DC_PUMP, LOW);
+
+  dht.begin();
+  u8g2.begin();
+
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  digitalWrite(GREEN_LED, HIGH);
+}
+
+// ================= MAIN LOOP =================
+
+void loop() {
+
+  Blynk.run();
+
+  unsigned long now = millis();
+
+  // Read sensors every 2 sec
+  if (now - lastSensor > 2000) {
+    readSensors();
+    sendToBlynk();
+    lastSensor = now;
+  }
+
+  // Core controls
+  controlWaterPump();
+  controlAirPump();
+  checkWaterAlert();
+
+  // Display rotation every 2 sec
+  if (now - lastDisplay > 2000) {
+    displayPage = (displayPage + 1) % 4;
+    updateDisplay();
+    lastDisplay = now;
+  }
+}
 
