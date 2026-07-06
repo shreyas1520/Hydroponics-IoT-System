@@ -1,4 +1,4 @@
-# Smart Hydroponic Farming System using ESP32 and IoT
+# Sustainable Hydroponic Farming Intelligent Monitoring and Automation
 This project presents an IoT-based Hydroponic Farming System developed using ESP32 for intelligent monitoring and automation.
 
 The system continuously monitors:
@@ -17,7 +17,7 @@ Sensor data is transmitted to the Blynk IoT platform through Wi-Fi for remote mo
 - ESP32 based controller
 - Wi-Fi connectivity
 - Blynk IoT Dashboard
-- OLED Display
+- OLED Display Output
 - Automatic Water Refill
 - Air Pump Control
 - Push Notifications
